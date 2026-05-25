@@ -1,9 +1,56 @@
 #include "lemon/streaming_proxy.h"
 #include <sstream>
 #include <iostream>
+#include <chrono>
 #include <lemon/utils/aixlog.hpp>
 
 namespace lemon {
+
+
+namespace {
+
+bool chunk_has_token_payload(const std::string& chunk_text) {
+    std::istringstream stream(chunk_text);
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (line.rfind("data: ", 0) != 0) {
+            continue;
+        }
+
+        const std::string data = line.substr(6);
+        if (data.empty() || data == "[DONE]") {
+            continue;
+        }
+
+        try {
+            const auto parsed = json::parse(data);
+            if (!parsed.contains("choices") || !parsed["choices"].is_array()) {
+                continue;
+            }
+            for (const auto& choice : parsed["choices"]) {
+                if (choice.contains("delta") && choice["delta"].is_object()) {
+                    const auto& delta = choice["delta"];
+                    for (const char* key : {"content", "reasoning_content"}) {
+                        if (delta.contains(key) && delta[key].is_string() && !delta[key].get<std::string>().empty()) {
+                            return true;
+                        }
+                    }
+                }
+                if (choice.contains("text") && choice["text"].is_string() && !choice["text"].get<std::string>().empty()) {
+                    return true;
+                }
+            }
+        } catch (...) {
+            // Ignore non-JSON stream frames.
+        }
+    }
+    return false;
+}
+
+} // namespace
 
 void StreamingProxy::forward_sse_stream(
     const std::string& backend_url,
@@ -15,12 +62,15 @@ void StreamingProxy::forward_sse_stream(
     std::string telemetry_buffer;
     bool stream_error = false;
     bool has_done_marker = false;
+    bool saw_first_token = false;
+    const auto started = std::chrono::steady_clock::now();
+    auto first_token_at = started;
 
     // Use HttpClient to stream from backend
     auto result = utils::HttpClient::post_stream(
         backend_url,
         request_body,
-        [&sink, &telemetry_buffer, &has_done_marker](const char* data, size_t length) {
+        [&sink, &telemetry_buffer, &has_done_marker, &saw_first_token, &first_token_at](const char* data, size_t length) {
             // Buffer for telemetry parsing
             telemetry_buffer.append(data, length);
 
@@ -28,6 +78,10 @@ void StreamingProxy::forward_sse_stream(
             std::string chunk(data, length);
             if (chunk.find("[DONE]") != std::string::npos) {
                 has_done_marker = true;
+            }
+            if (!has_done_marker && !saw_first_token && chunk_has_token_payload(chunk)) {
+                saw_first_token = true;
+                first_token_at = std::chrono::steady_clock::now();
             }
 
             // Forward chunk to client immediately
@@ -61,6 +115,17 @@ void StreamingProxy::forward_sse_stream(
 
         // Parse telemetry from buffered data
         auto telemetry = parse_telemetry(telemetry_buffer);
+        if (telemetry.time_to_first_token <= 0.0 && saw_first_token) {
+            telemetry.time_to_first_token = std::chrono::duration<double>(first_token_at - started).count();
+        }
+        if (telemetry.tokens_per_second <= 0.0 && telemetry.output_tokens > 0) {
+            const auto decode_start = saw_first_token ? first_token_at : started;
+            const double decode_seconds = std::chrono::duration<double>(
+                std::chrono::steady_clock::now() - decode_start).count();
+            if (decode_seconds > 0.0) {
+                telemetry.tokens_per_second = telemetry.output_tokens / decode_seconds;
+            }
+        }
         telemetry.print();
 
         if (on_complete) {
