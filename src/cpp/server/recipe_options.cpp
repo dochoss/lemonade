@@ -31,8 +31,6 @@ static const json DEFAULTS = {
     {"height", 512},
     {"sampling_method", ""},
     {"flow_shift", 0.0},
-    // FLM-specific options
-    {"flm_args", ""},       // Custom arguments to pass to flm serve
     // vLLM-specific options
     {"vllm_backend", ""},  // "" means auto-detect
     {"vllm_args", ""}      // Custom arguments to pass to vllm-server
@@ -52,7 +50,6 @@ static const std::map<std::string, std::string> OPTION_TO_CLI_FLAG = {
     {"sdcpp_args", "--sdcpp-args"},
     {"whispercpp_backend", "--whispercpp"},
     {"whispercpp_args", "--whispercpp-args"},
-    {"flm_args", "--flm-args"},
     {"vllm_backend", "--vllm"},
     {"vllm_args", "--vllm-args"}
 };
@@ -63,7 +60,7 @@ static std::vector<std::string> get_keys_for_recipe(const std::string& recipe) {
     } else if (recipe == "whispercpp") {
         return {"whispercpp_backend", "whispercpp_args", "merge_args"};
     } else if (recipe == "flm") {
-        return {"ctx_size", "flm_args", "merge_args"};
+        return {"ctx_size", "merge_args"};
     } else if (recipe == "ryzenai-llm") {
         return {"ctx_size"};
     } else if (recipe == "sd-cpp") {
@@ -232,10 +229,9 @@ static const json CLI_OPTIONS = {
     {"--whispercpp", {{"option_name", "whispercpp_backend"}, {"type_name", "BACKEND"}, {"envname", "LEMONADE_WHISPERCPP"}, {"help", "WhisperCpp backend to use"}}},
     {"--whispercpp-args", {{"option_name", "whispercpp_args"}, {"type_name", "ARGS"}, {"envname", "LEMONADE_WHISPERCPP_ARGS"}, {"help", "Custom arguments to pass to whisper-server"}}},
     {"--vllm", {{"option_name", "vllm_backend"}, {"type_name", "BACKEND"}, {"envname", "LEMONADE_VLLM"}, {"help", "vLLM backend to use"}}},
-    {"--vllm-args", {{"option_name", "vllm_args"}, {"type_name", "ARGS"}, {"envname", "LEMONADE_VLLM_ARGS"}, {"help", "Custom arguments to pass to vllm-server"}}},
+    {"--vllm-args", {{"option_name", "vllm_args"}, {"type_name", "ARGS"}, {"envname", "LEMONADE_VLLM_ARGS"}, {"help", "Custom arguments to pass to vllm-server"}}}
     // Note: Image gen params (--steps, --cfg-scale, --width, --height) removed — recipe-level only.
     // Runtime options (--diffusion-fa, --offload-to-cpu) go through --sdcpp-args.
-    {"--flm-args", {{"option_name", "flm_args"}, {"type_name", "ARGS"}, {"envname", "LEMONADE_FLM_ARGS"}, {"help", "Custom arguments to pass to flm serve"}}}
 };
 
 void RecipeOptions::add_cli_options(CLI::App& app, json& storage) {

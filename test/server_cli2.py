@@ -1902,7 +1902,6 @@ class CLIHelpDocsConsistencyTests(unittest.TestCase):
         self.assertNotIn("--ctx-size", claude_help)
         self.assertNotIn("LEMONADE_CTX_SIZE", claude_help)
         self.assertNotIn("--llamacpp", claude_help)
-        self.assertNotIn("--flm-args", claude_help)
 
         opencode_result = run_cli_command(
             ["launch", "opencode", "--help"], timeout=TIMEOUT_DEFAULT

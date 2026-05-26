@@ -138,7 +138,6 @@ class TestConfigEnvVars(unittest.TestCase):
                     "LEMONADE_LLAMACPP_ARGS": "--flash-attn on",
                     "LEMONADE_WHISPERCPP": "cpu",
                     "LEMONADE_WHISPERCPP_ARGS": "--convert",
-                    "LEMONADE_FLM_ARGS": "--socket 20",
                 }
             )
         cls.proc, cls.cache_dir = start_server(cls.env)
@@ -193,10 +192,6 @@ class TestConfigEnvVars(unittest.TestCase):
     @unittest.skipIf(IS_MACOS, "whispercpp args not applicable on macOS")
     def test_whispercpp_args(self):
         self.assertEqual(self.snapshot["whispercpp"]["args"], "--convert")
-
-    @unittest.skipIf(IS_MACOS, "FLM is NPU-only, not available on macOS")
-    def test_flm_args(self):
-        self.assertEqual(self.snapshot["flm"]["args"], "--socket 20")
 
 
 # ---------------------------------------------------------------------------

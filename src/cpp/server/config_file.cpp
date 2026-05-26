@@ -226,8 +226,6 @@ static const EnvMapping env_mappings[] = {
     {"LEMONADE_SDCPP_CPU_BIN",           "sdcpp", "cpu_bin"},
     {"LEMONADE_SDCPP_ROCM_BIN",          "sdcpp", "rocm_bin"},
     {"LEMONADE_SDCPP_VULKAN_BIN",        "sdcpp", "vulkan_bin"},
-    // flm
-    {"LEMONADE_FLM_ARGS",               "flm", "args"},
     // ryzenai
     {"LEMONADE_RYZENAI_SERVER_BIN",      "ryzenai", "server_bin"},
     // kokoro
